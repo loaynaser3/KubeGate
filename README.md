@@ -60,3 +60,25 @@ Description of Components
 
     main.go:
         Initializes the application by setting up Kobra and registering commands.
+
+Project Name: KubeGate
+
+    A Kubernetes proxy tool to access private clusters.
+    Stored in the GitHub repository: loaynaser3/KubeGate.
+
+Key Features:
+
+    Single-command execution.
+    Interactive shell mode.
+    Context management similar to kubectl config (e.g., storing RabbitMQ URLs, namespaces, and credentials).
+
+Architecture:
+
+    Client:
+        Sends commands to RabbitMQ.
+        Receives responses from RabbitMQ (via reply queues and correlation IDs).
+    Agent:
+        Processes commands received from RabbitMQ.
+        Publishes results back to RabbitMQ.
+
+Planned Folder Structure:
