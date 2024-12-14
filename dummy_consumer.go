@@ -7,7 +7,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func main() {
+func main_1() {
 	rabbitURL := "amqp://guest:guest@localhost:5672/"
 	replyQueue := "reply-queue"
 

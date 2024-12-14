@@ -3,44 +3,40 @@ package KubeGate
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/loaynaser3/KubeGate/pkg/config"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
 )
 
 // ExecuteRun handles the "run" command
-func ExecuteRun(kubeCommand string) {
-	rabbitURL := "amqp://guest:guest@localhost:5672/"
-	conn, err := queue.Connect(rabbitURL)
+func ExecuteRun(kubeCommand string, args []string) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Get the current context
+	context, err := config.GetContext(cfg, cfg.CurrentContext)
+	if err != nil {
+		log.Fatalf("Failed to get current context: %v", err)
+	}
+
+	// Use the command queue for the current context
+	commandQueue := context.CommandQueue
+	replyQueue := "reply-queue-" + uuid.New().String()
+
+	// Connect to RabbitMQ
+	conn, err := queue.Connect(context.RabbitMQURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 	defer conn.Close()
 
-	// Use a unique reply queue for this client
-	replyQueue := "reply-queue-" + uuid.New().String()
-
-	// Declare the reply queue
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Failed to create channel: %v", err)
-	}
-	defer ch.Close()
-
-	_, err = ch.QueueDeclare(
-		replyQueue, // name
-		false,      // durable
-		true,       // delete when unused
-		true,       // exclusive
-		false,      // no-wait
-		nil,        // arguments
-	)
-	if err != nil {
-		log.Fatalf("Failed to declare reply queue: %v", err)
-	}
-
-	// Send the command
-	correlationID, err := queue.SendWithReply(conn, "kubegate-commands", kubeCommand, replyQueue)
+	// Send the command to the agent
+	fullCommand := strings.Join(append([]string{kubeCommand}, args...), " ")
+	correlationID, err := queue.SendWithReply(conn, commandQueue, fullCommand, replyQueue)
 	if err != nil {
 		log.Fatalf("Failed to send command: %v", err)
 	}

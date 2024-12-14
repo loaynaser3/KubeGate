@@ -6,21 +6,29 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/loaynaser3/KubeGate/pkg/config"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
 	"github.com/streadway/amqp"
 )
 
 // StartAgent initializes the RabbitMQ consumer and starts processing messages
 func StartAgent() error {
-	rabbitURL := "amqp://guest:guest@localhost:5672/"
-	conn, err := queue.Connect(rabbitURL)
+	// Load agent configuration
+	cfg, err := config.LoadAgentConfig()
+	if err != nil {
+		log.Fatalf("Failed to load agent config: %v", err)
+	}
+
+	// Connect to RabbitMQ
+	conn, err := queue.Connect(cfg.RabbitMQURL)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	log.Println("Agent is listening for commands...")
-	return queue.ConsumeMessages(conn, "kubegate-commands", handleCommand)
+	// Start consuming messages from the dedicated command queue
+	log.Printf("Agent is listening on queue: %s", cfg.CommandQueue)
+	return queue.ConsumeMessages(conn, cfg.CommandQueue, handleCommand)
 }
 
 func handleCommand(ch *amqp.Channel, msg amqp.Delivery) {
@@ -68,7 +76,7 @@ func executeKubectlCommand(command string) (string, error) {
 	return string(output), nil
 }
 
-// ExecuteCommand simulates executing a kubectl command.
+// ExecuteCommand SIMULATE executing a kubectl command.
 func ExecuteCommand(command string) (string, error) {
 	// Simulate processing the command
 	// In production, use `client-go` to interact with the Kubernetes API
