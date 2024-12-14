@@ -42,3 +42,24 @@ func SendWithReply(conn *amqp.Connection, queueName string, message string, repl
 
 	return correlationID, nil
 }
+
+// PublishResponse sends a response message to the specified reply queue
+func PublishResponse(conn *amqp.Connection, replyQueue, correlationID, message string) error {
+	ch, err := conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	return ch.Publish(
+		"",         // exchange
+		replyQueue, // reply queue
+		false,      // mandatory
+		false,      // immediate
+		amqp.Publishing{
+			ContentType:   "text/plain",
+			Body:          []byte(message),
+			CorrelationId: correlationID,
+		},
+	)
+}

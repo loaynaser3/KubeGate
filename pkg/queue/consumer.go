@@ -100,3 +100,46 @@ func WaitForResponse(conn *amqp.Connection, replyQueue string, correlationID str
 		}
 	}
 }
+
+// ConsumeMessagesWithCustomHandler consumes messages and processes them using a custom handler
+func ConsumeMessagesWithCustomHandler(conn *amqp.Connection, queueName string, handler func(msg amqp.Delivery)) error {
+	ch, err := conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	// Declare the queue
+	_, err = ch.QueueDeclare(
+		queueName, // name
+		false,     // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
+	)
+	if err != nil {
+		return err
+	}
+
+	// Start consuming messages
+	msgs, err := ch.Consume(
+		queueName, // queue
+		"",        // consumer
+		true,      // auto-ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Consuming messages from queue: %s", queueName)
+	for msg := range msgs {
+		go handler(msg) // Process each message concurrently
+	}
+
+	return nil
+}
