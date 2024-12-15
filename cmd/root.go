@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/loaynaser3/KubeGate/pkg/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +24,9 @@ and an interactive shell.`,
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
+		logging.Logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to start")
 		os.Exit(1)
 	}
 }
