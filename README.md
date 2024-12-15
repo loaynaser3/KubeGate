@@ -1,28 +1,82 @@
+
+# KubeGate
+
+## Description
+KubeGate is a Kubernetes proxy tool that enables secure and efficient command execution on private clusters. It leverages RabbitMQ for communication between clients and agents, allowing for seamless integration with multi-tenant environments and role-based permissions management.
+
+## Features
+- **Queue Segmentation**: Ensures isolated command handling for multiple agents and contexts.
+- **Dynamic RabbitMQ Configuration**:
+  - Agent: Supports RabbitMQ details via environment variables or YAML configuration.
+  - Client: Supports multiple contexts, similar to `kubectl`, with configurable RabbitMQ queues.
+- **Command Execution**: Executes `kubectl` commands on behalf of the client using agents running inside the target clusters.
+- **Response Management**: Uses unique correlation IDs for each client request, ensuring responses are routed back to the correct client.
+
+## Supported Commands
+- Run Kubernetes commands:
+  ```bash
+  kubeGate run [command] [args...]
+  ```
+
+### Examples
+1. **Basic Command Execution**:
+   ```bash
+   kubeGate run get pods -n default
+   ```
+   Executes `kubectl get pods -n default` in the current context.
+
+2. **Switching Contexts**:
+   ```bash
+   kubeGate config set-context dev --rabbitmq-url amqp://user:pass@dev-rabbitmq:5672/ --command-queue kubegate-commands-dev
+   kubeGate config use-context dev
+   kubeGate run describe pod nginx
+   ```
+
+3. **List Available Contexts**:
+   ```bash
+   kubeGate config get-contexts
+   ```
+
+## TODO
+- **Interactive Shell**: Add support for running multiple commands in a single session.
+- **Prometheus Metrics**: Export metrics such as command execution count and latency.
+- **Error Logging**: Enhance error visibility and structured logging.
+- **Advanced Configuration**: Add support for namespace-based configurations.
+- **Enhanced Security**: Explore TLS for RabbitMQ connections and stricter command validation.
+
+---
+
+KubeGate simplifies Kubernetes operations in private clusters by bridging the gap between clients and agents. Contributions and suggestions are always welcome!
+
+
+## Planned Folder Structure:
+
 ```
 KubeGate/
 ├── cmd/
+│   ├── agent.go            # Command to start the agent
+│   ├── config.go           # Add or update a context       
 │   ├── root.go             # Root command, initializes Kobra and subcommands
-│   ├── single/
-│   │   └── single.go       # Single command execution logic
-│   ├── shell/
-│   │   └── shell.go        # Interactive shell logic
-│   ├── agent/
-│       └── agent.go        # Command to start the agent
+│   ├── run.go              # Single command execution logic
+│
 ├── pkg/
 │   ├── k8s/
 │   │   └── k8s.go          # Kubernetes interaction logic
 │   ├── queue/
 │   │   ├── producer.go     # Logic for publishing messages to RabbitMQ
 │   │   └── consumer.go     # Logic for consuming messages from RabbitMQ
+│   ├── KubeGate/
+│   │   ├── agent.go        # Logic for Agent
+│   │   └── run.go          # Logic for run command
 │   ├── shell/
 │   │   └── interactive.go  # Logic for handling interactive commands
 │   ├── config/
-│       └── config.go       # Configuration loader (e.g., for RabbitMQ, Kubernetes contexts)
+│       └── agent.go       # Configuration loader for agent (for RabbitMQ)
+│       └── config.go       # Configuration loader for client (e.g., for RabbitMQ, Kubernetes contexts)
 ├── internal/
 │   ├── logger/
-│   │   └── logger.go       # Logging setup
 │   ├── utils/
-│       └── utils.go        # Helper functions used across the project
+│
 ├── scripts/
 │   ├── setup-rabbitmq.sh   # Script to set up RabbitMQ locally or in a cluster
 │   └── deploy-agent.yaml   # Kubernetes manifest for deploying the agent
@@ -80,5 +134,3 @@ Architecture:
     Agent:
         Processes commands received from RabbitMQ.
         Publishes results back to RabbitMQ.
-
-Planned Folder Structure:
