@@ -22,16 +22,19 @@ func StartAgent() error {
 	// Connect to RabbitMQ
 	conn, err := queue.Connect(cfg.RabbitMQURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to RabbitMQ: %v", err)
 	}
 	defer conn.Close()
 
 	// Start consuming messages from the dedicated command queue
 	log.Printf("Agent is listening on queue: %s", cfg.CommandQueue)
-	return queue.ConsumeMessages(conn, cfg.CommandQueue, handleCommand)
+	return queue.ConsumeMessagesWithCustomHandler(conn, cfg.CommandQueue, func(msg amqp.Delivery) {
+		handleCommand(conn, msg)
+	})
 }
 
-func handleCommand(ch *amqp.Channel, msg amqp.Delivery) {
+// handleCommand processes a single message and sends a response back to the client
+func handleCommand(conn *amqp.Connection, msg amqp.Delivery) {
 	log.Printf("Received command: %s\n", string(msg.Body))
 
 	// Execute the command
@@ -41,19 +44,8 @@ func handleCommand(ch *amqp.Channel, msg amqp.Delivery) {
 		result = fmt.Sprintf("Error executing command: %v", err)
 	}
 
-	// Send response to reply queue
-	err = ch.Publish(
-		"",          // exchange
-		msg.ReplyTo, // reply queue
-		false,       // mandatory
-		false,       // immediate
-		amqp.Publishing{
-			ContentType:   "text/plain",
-			Body:          []byte(result),
-			CorrelationId: msg.CorrelationId, // Match request correlation ID
-		},
-	)
-	if err != nil {
+	// Send response to the reply queue
+	if err := queue.PublishResponse(conn, msg.ReplyTo, msg.CorrelationId, result); err != nil {
 		log.Printf("Failed to send response: %v", err)
 	} else {
 		log.Printf("Sent response for correlation ID: %s", msg.CorrelationId)
@@ -68,7 +60,6 @@ func executeKubectlCommand(command string) (string, error) {
 
 	// Capture the output
 	output, err := cmd.CombinedOutput()
-	println(output)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute command: %s, error: %v", string(output), err)
 	}
