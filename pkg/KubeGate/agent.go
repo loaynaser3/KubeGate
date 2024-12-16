@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/loaynaser3/KubeGate/pkg/config"
+	"github.com/loaynaser3/KubeGate/pkg/logging"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
+	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -16,7 +18,9 @@ func StartAgent() error {
 	// Load agent configuration
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
-		log.Fatalf("Failed to load agent config: %v", err)
+		logging.Logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to load agent config")
 	}
 
 	// Connect to RabbitMQ
@@ -28,6 +32,10 @@ func StartAgent() error {
 
 	// Start consuming messages from the dedicated command queue
 	log.Printf("Agent is listening on queue: %s", cfg.CommandQueue)
+	logging.Logger.WithFields(logrus.Fields{
+		"rabbitmq_url":  cfg.RabbitMQURL,
+		"command_queue": cfg.CommandQueue,
+	}).Info("Agent started and connected to RabbitMQ")
 	return queue.ConsumeMessagesWithCustomHandler(conn, cfg.CommandQueue, func(msg amqp.Delivery) {
 		handleCommand(conn, msg)
 	})
@@ -35,20 +43,37 @@ func StartAgent() error {
 
 // handleCommand processes a single message and sends a response back to the client
 func handleCommand(conn *amqp.Connection, msg amqp.Delivery) {
-	log.Printf("Received command: %s\n", string(msg.Body))
+	logging.Logger.WithFields(logrus.Fields{
+		"command":     string(msg.Body),
+		"reply_queue": msg.ReplyTo,
+		"correlation": msg.CorrelationId,
+	}).Info("Received command from client")
 
 	// Execute the command
 	command := string(msg.Body)
+	logging.Logger.WithField("command", command).Info("Executing kubectl command")
 	result, err := executeKubectlCommand(command)
 	if err != nil {
-		result = fmt.Sprintf("Error executing command: %v", err)
+		logging.Logger.WithFields(logrus.Fields{
+			"command": command,
+			"error":   err.Error(),
+		}).Error("Failed to execute kubectl command")
 	}
 
 	// Send response to the reply queue
 	if err := queue.PublishResponse(conn, msg.ReplyTo, msg.CorrelationId, result); err != nil {
-		log.Printf("Failed to send response: %v", err)
+		logging.Logger.WithFields(logrus.Fields{
+			"correlation": msg.CorrelationId,
+			"reply_queue": msg.ReplyTo,
+			"Error":       err,
+		}).Error("Failed to send response")
+
 	} else {
-		log.Printf("Sent response for correlation ID: %s", msg.CorrelationId)
+		logging.Logger.WithFields(logrus.Fields{
+			"correlation": msg.CorrelationId,
+			"reply_queue": msg.ReplyTo,
+		}).Info("Response sent to client")
+
 	}
 }
 
@@ -61,6 +86,10 @@ func executeKubectlCommand(command string) (string, error) {
 	// Capture the output
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{
+			"command": string(output),
+			"Error":   err,
+		}).Error("failed to execute command")
 		return "", fmt.Errorf("failed to execute command: %s, error: %v", string(output), err)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/loaynaser3/KubeGate/pkg/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +21,10 @@ and an interactive shell.`,
 
 // Execute initializes the root command
 func Execute() {
+	logging.Logger.Info("KubeGate CLI started")
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logging.Logger.WithField("error", err.Error()).Error("Command execution failed")
+
 		os.Exit(1)
 	}
 }

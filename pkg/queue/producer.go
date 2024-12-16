@@ -2,6 +2,8 @@ package queue
 
 import (
 	"github.com/google/uuid"
+	"github.com/loaynaser3/KubeGate/pkg/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -39,7 +41,11 @@ func SendWithReply(conn *amqp.Connection, queueName string, message string, repl
 	if err != nil {
 		return "", err
 	}
-
+	logging.Logger.WithFields(logrus.Fields{
+		"queue":       replyQueue,
+		"correlation": correlationID,
+		"message":     message,
+	}).Info("Published message to queue")
 	return correlationID, nil
 }
 
@@ -47,10 +53,19 @@ func SendWithReply(conn *amqp.Connection, queueName string, message string, repl
 func PublishResponse(conn *amqp.Connection, replyQueue, correlationID, message string) error {
 	ch, err := conn.Channel()
 	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{
+			"queue": replyQueue,
+			"error": err.Error(),
+		}).Error("Failed to publish message")
 		return err
 	}
 	defer ch.Close()
 
+	logging.Logger.WithFields(logrus.Fields{
+		"queue":       replyQueue,
+		"correlation": correlationID,
+		"message":     message,
+	}).Info("Published message to queue")
 	return ch.Publish(
 		"",         // exchange
 		replyQueue, // reply queue
