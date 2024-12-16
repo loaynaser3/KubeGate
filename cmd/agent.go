@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"github.com/loaynaser3/KubeGate/pkg/KubeGate"
+	"github.com/loaynaser3/KubeGate/pkg/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +20,9 @@ on the Kubernetes cluster, and sends the results back to the client.`,
 		err := KubeGate.StartAgent()
 		if err != nil {
 			log.Fatalf("Agent encountered an error: %v", err)
+			logging.Logger.WithFields(logrus.Fields{
+				"Error": err,
+			}).Error("Agent start encountered an error")
 		}
 	},
 }

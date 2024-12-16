@@ -5,10 +5,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/loaynaser3/KubeGate/pkg/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
-// ConsumeMessages starts consuming messages from a queue
+// ConsumeMessages starts consuming messages from a queue - not used currently
 func ConsumeMessages(conn *amqp.Connection, queueName string, handler func(ch *amqp.Channel, msg amqp.Delivery)) error {
 	ch, err := conn.Channel()
 	if err != nil {
@@ -136,8 +138,14 @@ func ConsumeMessagesWithCustomHandler(conn *amqp.Connection, queueName string, h
 		return err
 	}
 
-	log.Printf("Consuming messages from queue: %s", queueName)
+	logging.Logger.WithField("queue", queueName).Info("Started listening to queue")
+
 	for msg := range msgs {
+		logging.Logger.WithFields(logrus.Fields{
+			"message_body": string(msg.Body),
+			"delivery_tag": msg.DeliveryTag,
+		}).Debug("Message consumed")
+
 		go handler(msg) // Process each message concurrently
 	}
 
