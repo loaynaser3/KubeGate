@@ -10,6 +10,7 @@ import (
 type AgentConfig struct {
 	RabbitMQURL  string `yaml:"rabbitmq-url"`
 	CommandQueue string `yaml:"command-queue"`
+	Backend      string `yaml:"backend"`
 }
 
 var agentConfigFile = filepath.Join(os.Getenv("HOME"), ".kubegate", "agent-config.yaml")

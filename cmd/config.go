@@ -15,7 +15,7 @@ var configCmd = &cobra.Command{
 var setContextCmd = &cobra.Command{
 	Use:   "set-context",
 	Short: "Add or update a context",
-	Args:  cobra.ExactArgs(3), // name, rabbitmq-url, reply-queue
+	Args:  cobra.ExactArgs(5), // name, rabbitmq-url, reply-queue
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.LoadConfig()
 		if err != nil {
@@ -25,9 +25,10 @@ var setContextCmd = &cobra.Command{
 
 		ctx := config.Context{
 			Name:         args[0],
-			RabbitMQURL:  args[1],
-			CommandQueue: args[2],
-			ReplyQueue:   args[3],
+			ReplyQueue:   args[1],
+			RabbitMQURL:  args[2],
+			CommandQueue: args[3],
+			Backend:      args[4],
 		}
 
 		config.SetContext(cfg, ctx)
