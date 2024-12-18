@@ -25,9 +25,9 @@ var setContextCmd = &cobra.Command{
 
 		ctx := config.Context{
 			Name:         args[0],
-			ReplyQueue:   args[1],
-			RabbitMQURL:  args[2],
-			CommandQueue: args[3],
+			RabbitMQURL:  args[1],
+			CommandQueue: args[2],
+			ReplyQueue:   args[3],
 			Backend:      args[4],
 		}
 
@@ -54,7 +54,7 @@ var getContextsCmd = &cobra.Command{
 
 		fmt.Println("Available contexts:")
 		for _, ctx := range cfg.Contexts {
-			fmt.Printf("- %s (RabbitMQ: %s, ReplyQueue: %s)\n", ctx.Name, ctx.RabbitMQURL, ctx.ReplyQueue)
+			fmt.Printf("- %s (BrokerURL: %s, ReplyQueue: %s, CommandQueue: %s, Backend: %s)\n", ctx.Name, ctx.RabbitMQURL, ctx.ReplyQueue, ctx.CommandQueue, ctx.Backend)
 		}
 		fmt.Printf("Current context: %s\n", cfg.CurrentContext)
 	},
