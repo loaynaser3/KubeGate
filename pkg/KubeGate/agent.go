@@ -2,7 +2,6 @@ package KubeGate
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 
@@ -10,71 +9,66 @@ import (
 	"github.com/loaynaser3/KubeGate/pkg/logging"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
 	"github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 )
 
 // StartAgent initializes the RabbitMQ consumer and starts processing messages
 func StartAgent() error {
-	// Load agent configuration
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
-		logging.Logger.WithFields(logrus.Fields{
-			"error": err.Error(),
-		}).Error("Failed to load agent config")
+		return fmt.Errorf("failed to load agent config: %v", err)
 	}
 
-	// Connect to RabbitMQ
-	conn, err := queue.Connect(cfg.RabbitMQURL)
+	// Initialize the messaging backend
+	messageQueue, err := queue.NewMessageQueue(cfg.Backend, cfg.RabbitMQURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to RabbitMQ: %v", err)
+		return fmt.Errorf("failed to initialize messaging backend: %v", err)
 	}
-	defer conn.Close()
+	defer messageQueue.Close()
 
-	// Start consuming messages from the dedicated command queue
-	log.Printf("Agent is listening on queue: %s", cfg.CommandQueue)
-	logging.Logger.WithFields(logrus.Fields{
-		"rabbitmq_url":  cfg.RabbitMQURL,
-		"command_queue": cfg.CommandQueue,
-	}).Info("Agent started and connected to RabbitMQ")
-	return queue.ConsumeMessagesWithCustomHandler(conn, cfg.CommandQueue, func(msg amqp.Delivery) {
-		handleCommand(conn, msg)
+	// Connect to backend
+	if err := messageQueue.Connect(); err != nil {
+		return fmt.Errorf("failed to connect to messaging backend: %v", err)
+	}
+
+	return messageQueue.ReceiveMessages(cfg.CommandQueue, func(msg queue.Message) error {
+		return handleCommand(msg, messageQueue)
 	})
 }
 
 // handleCommand processes a single message and sends a response back to the client
-func handleCommand(conn *amqp.Connection, msg amqp.Delivery) {
+func handleCommand(msg queue.Message, mq queue.MessageQueue) error {
 	logging.Logger.WithFields(logrus.Fields{
-		"command":     string(msg.Body),
+		"command":     msg.Body,
 		"reply_queue": msg.ReplyTo,
-		"correlation": msg.CorrelationId,
+		"correlation": msg.CorrelationID,
 	}).Info("Received command from client")
 
 	// Execute the command
-	command := string(msg.Body)
-	logging.Logger.WithField("command", command).Info("Executing kubectl command")
-	result, err := executeKubectlCommand(command)
+	logging.Logger.WithField("command", msg.Body).Info("Executing kubectl command")
+	result, err := executeKubectlCommand(msg.Body)
 	if err != nil {
 		logging.Logger.WithFields(logrus.Fields{
-			"command": command,
+			"command": msg.Body,
 			"error":   err.Error(),
 		}).Error("Failed to execute kubectl command")
+		result = fmt.Sprintf("Error: %v", err)
 	}
 
-	// Send response to the reply queue
-	if err := queue.PublishResponse(conn, msg.ReplyTo, msg.CorrelationId, result); err != nil {
+	// Send response using the messaging backend
+	if err := mq.PublishResponse(msg.ReplyTo, msg.CorrelationID, result); err != nil {
 		logging.Logger.WithFields(logrus.Fields{
-			"correlation": msg.CorrelationId,
+			"correlation": msg.CorrelationID,
 			"reply_queue": msg.ReplyTo,
-			"Error":       err,
-		}).Error("Failed to send response")
-
-	} else {
-		logging.Logger.WithFields(logrus.Fields{
-			"correlation": msg.CorrelationId,
-			"reply_queue": msg.ReplyTo,
-		}).Info("Response sent to client")
-
+			"error":       err.Error(),
+		}).Error("Failed to send response to client")
+		return err // Return the error here
 	}
+
+	logging.Logger.WithFields(logrus.Fields{
+		"correlation": msg.CorrelationID,
+		"reply_queue": msg.ReplyTo,
+	}).Info("Response sent to client")
+	return nil // Return nil for success
 }
 
 // executeKubectlCommand executes a kubectl command in the agent pod

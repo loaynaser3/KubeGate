@@ -15,7 +15,7 @@ var configCmd = &cobra.Command{
 var setContextCmd = &cobra.Command{
 	Use:   "set-context",
 	Short: "Add or update a context",
-	Args:  cobra.ExactArgs(3), // name, rabbitmq-url, reply-queue
+	Args:  cobra.ExactArgs(5), // name, rabbitmq-url, reply-queue
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.LoadConfig()
 		if err != nil {
@@ -28,6 +28,7 @@ var setContextCmd = &cobra.Command{
 			RabbitMQURL:  args[1],
 			CommandQueue: args[2],
 			ReplyQueue:   args[3],
+			Backend:      args[4],
 		}
 
 		config.SetContext(cfg, ctx)
@@ -53,7 +54,7 @@ var getContextsCmd = &cobra.Command{
 
 		fmt.Println("Available contexts:")
 		for _, ctx := range cfg.Contexts {
-			fmt.Printf("- %s (RabbitMQ: %s, ReplyQueue: %s)\n", ctx.Name, ctx.RabbitMQURL, ctx.ReplyQueue)
+			fmt.Printf("- %s (BrokerURL: %s, ReplyQueue: %s, CommandQueue: %s, Backend: %s)\n", ctx.Name, ctx.RabbitMQURL, ctx.ReplyQueue, ctx.CommandQueue, ctx.Backend)
 		}
 		fmt.Printf("Current context: %s\n", cfg.CurrentContext)
 	},

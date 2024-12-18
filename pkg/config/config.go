@@ -13,6 +13,7 @@ type Context struct {
 	RabbitMQURL  string `yaml:"rabbitmq-url"`
 	CommandQueue string `yaml:"command-queue"`
 	ReplyQueue   string `yaml:"reply-queue"`
+	Backend      string `yaml:"backend"`
 }
 
 type Config struct {

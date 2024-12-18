@@ -4,7 +4,9 @@ contexts:
     rabbitmq-url: amqp://guest:guest@localhost:5672/
     command-queue: kubegate-commands-dev
     reply-queue: reply-queue-dev
+    backend: rabbitmq
   - name: prod
     rabbitmq-url: amqp://user:pass@prod-rabbitmq:5672/
     command-queue: kubegate-commands-prod
     reply-queue: reply-queue-prod
+    backend: rabbitmq
