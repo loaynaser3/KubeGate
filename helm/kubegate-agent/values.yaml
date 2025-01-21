@@ -1,0 +1,21 @@
+replicaCount: 1
+
+image:
+  repository: localshell/kubegate
+  tag: latest
+  pullPolicy: IfNotPresent
+
+env:
+  KUBEGATE_RABBITMQ_URL: "amqps://ximrjzql:65EplJ1YGdalM--Wx7xHSxNM_6up06Yx@campbell.lmq.cloudamqp.com/ximrjzql"
+  KUBEGATE_RABBITMQ_QUEUE: "kubegate-commands-prod"
+  KUBEGATE_BACKEND: "rabbitmq"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 250m
+    memory: 128Mi
+serviceAccount:
+  create: true
