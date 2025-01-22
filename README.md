@@ -12,10 +12,38 @@ KubeGate is a Kubernetes proxy tool that enables secure and efficient command ex
 - **Command Execution**: Executes `kubectl` commands on behalf of the client using agents running inside the target clusters.
 - **Response Management**: Uses unique correlation IDs for each client request, ensuring responses are routed back to the correct client.
 
+## Build package and Deployment
+
+* you need GoLang Version 1.23 or higher 
+### Build client binary locally
+1. go build command
+```bash 
+  go build -o kubegate .
+  ```
+2. verify kubegate running
+```bash
+  ./kubegate --help
+  ```
+### Build Docker image
+ ```bash
+  docker build -t kubegate:latest .
+  ```
+### Deploy Agent on K8S
+```bash
+cd helm/kubegate-agent
+# edit values.yaml env section with relevant RabbitMQ details
+# change the image repository or keep the default if you can pull it
+helm install kubegate . -f values.yaml
+```
+
 ## Supported Commands
 - Run Kubernetes commands:
   ```bash
   kubeGate run [command] [args...]
+  ```
+  or 
+  ```bash
+  kubeGate [command] [args...]
   ```
 
 ### Examples
@@ -42,7 +70,7 @@ KubeGate is a Kubernetes proxy tool that enables secure and efficient command ex
 - **Prometheus Metrics**: Export metrics such as command execution count and latency.
 - **Error Logging**: Enhance error visibility and structured logging.
 - **Advanced Configuration**: Add support for namespace-based configurations.
-- **Enhanced Security**: Explore TLS for RabbitMQ connections and stricter command validation.
+- **Enhanced Security**: ~~Explore TLS for RabbitMQ connections and stricter command validation.~~
 
 ---
 
