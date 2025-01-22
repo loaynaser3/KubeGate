@@ -8,6 +8,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/loaynaser3/KubeGate/pkg/config"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
+	"github.com/loaynaser3/KubeGate/pkg/utils"
+)
+
+var (
+	filePath    string // To store the value of the `-f` flag
+	encodedFile string
 )
 
 // ExecuteRun handles the "run" command
@@ -36,8 +42,13 @@ func ExecuteRun(kubeCommand string, args []string) {
 	replyQueue := "reply-queue-" + uuid.New().String()
 	correlationID := uuid.New().String()
 
+	// Manually parse `-f` or `--file` flag
+	encodedArgs, err := utils.ReplaceFileWithBase64(args, utils.EncodeFileToBase64String)
+	if err != nil {
+		log.Fatalf("Failed to encode message: %v", err)
+	}
 	// Send command to agent
-	fullCommand := strings.Join(append([]string{kubeCommand}, args...), " ")
+	fullCommand := strings.Join(append([]string{kubeCommand}, encodedArgs...), " ")
 	err = messageQueue.SendMessage(context.CommandQueue, fullCommand, correlationID, replyQueue)
 	if err != nil {
 		log.Fatalf("Failed to send command: %v", err)

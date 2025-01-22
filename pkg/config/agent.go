@@ -13,24 +13,26 @@ type AgentConfig struct {
 	Backend      string `yaml:"backend"`
 }
 
-var agentConfigFile = filepath.Join(os.Getenv("HOME"), ".kubegate", "agent-config.yaml")
+// var agentConfigFile = filepath.Join(os.Getenv("HOME"), ".kubegate", "agent-config.yaml")
 
 // LoadAgentConfig loads the agent configuration from a YAML file
 func LoadAgentConfig() (*AgentConfig, error) {
 	// Check for environment variables first
 	rabbitURL := os.Getenv("KUBEGATE_RABBITMQ_URL")
 	commandQueue := os.Getenv("KUBEGATE_RABBITMQ_QUEUE")
+	backend := os.Getenv("KUBEGATE_BACKEND")
 
 	// If both environment variables are set, use them
 	if rabbitURL != "" && commandQueue != "" {
 		return &AgentConfig{
 			RabbitMQURL:  rabbitURL,
 			CommandQueue: commandQueue,
+			Backend:      backend,
 		}, nil
 	}
 
 	// Otherwise, fall back to the YAML file
-	file, err := os.ReadFile(agentConfigFile)
+	file, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".kubegate", "agent-config.yaml"))
 	if err != nil {
 		return nil, err
 	}
