@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"time"
 )
 
 func NewMessageQueue(backend string, url string) (MessageQueue, error) {
@@ -9,8 +10,7 @@ func NewMessageQueue(backend string, url string) (MessageQueue, error) {
 	case "rabbitmq":
 		return &RabbitMQ{URL: url}, nil
 	case "sqs":
-		// Placeholder for AWS SQS implementation
-		return nil, fmt.Errorf("SQS not implemented yet")
+		return &SQS{QueueURL: url, Timeout: 20 * time.Second}, nil
 	case "pubsub":
 		// Placeholder for GCP Pub/Sub implementation
 		return nil, fmt.Errorf("Pub/Sub not implemented yet")
