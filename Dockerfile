@@ -34,9 +34,6 @@ RUN apt-get update && apt-get install -y \
 # Copy the built binary from the builder stage
 COPY --from=builder /app/kubegate /usr/local/bin/kubegate
 
-# Expose necessary ports (if applicable)
-# Example: exposing port 5672 if RabbitMQ communication is required
-# EXPOSE 5672
 
 # Set the entrypoint
 ENTRYPOINT ["kubegate"]
