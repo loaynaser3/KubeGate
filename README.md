@@ -12,6 +12,10 @@ KubeGate is a Kubernetes proxy tool that enables secure and efficient command ex
 - **Command Execution**: Executes `kubectl` commands on behalf of the client using agents running inside the target clusters.
 - **Response Management**: Uses unique correlation IDs for each client request, ensuring responses are routed back to the correct client.
 
+## KubeGate Diagram
+
+![KubeGate Diagram](docs/KubeGate-Diagram.jpeg)
+
 ## Build package and Deployment
 
 * you need GoLang Version 1.23 or higher 
