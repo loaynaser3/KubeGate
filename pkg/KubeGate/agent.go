@@ -8,6 +8,7 @@ import (
 	"github.com/loaynaser3/KubeGate/pkg/config"
 	"github.com/loaynaser3/KubeGate/pkg/logging"
 	"github.com/loaynaser3/KubeGate/pkg/queue"
+	"github.com/loaynaser3/KubeGate/pkg/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,12 +44,13 @@ func handleCommand(msg queue.Message, mq queue.MessageQueue) error {
 		"correlation": msg.CorrelationID,
 	}).Info("Received command from client")
 
+	decodedArgs, err := utils.ReplaceBase64WithFile(strings.Split(msg.Body, " "), utils.DecodeBase64StringToFile)
 	// Execute the command
-	logging.Logger.WithField("command", msg.Body).Info("Executing kubectl command")
-	result, err := executeKubectlCommand(msg.Body)
+	logging.Logger.WithField("command", decodedArgs).Info("Executing kubectl command")
+	result, err := executeKubectlCommand(strings.Join(decodedArgs, " "))
 	if err != nil {
 		logging.Logger.WithFields(logrus.Fields{
-			"command": msg.Body,
+			"command": decodedArgs,
 			"error":   err.Error(),
 		}).Error("Failed to execute kubectl command")
 		result = fmt.Sprintf("Error: %v", err)
