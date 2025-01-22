@@ -1,0 +1,34 @@
+name: CI/CD for KubeGate
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "main"
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20
+
+      - name: Install Dependencies
+        run: go mod tidy
+
+      - name: Run Linter
+        run: |
+          go install golang.org/x/lint/golint@latest
+          golint ./...
+
+      # - name: Run Tests
+      #   run: go test ./... -v

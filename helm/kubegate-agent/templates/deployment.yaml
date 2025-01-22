@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubegate-agent
+  labels:
+    app: kubegate-agent
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: kubegate-agent
+  template:
+    metadata:
+      labels:
+        app: kubegate-agent
+    spec:
+      serviceAccountName: kubegate-agent
+      containers:
+      - name: kubegate-agent
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/usr/local/bin/kubegate", "agent"]
+        env:
+        - name: KUBEGATE_RABBITMQ_URL
+          value: "{{ .Values.env.KUBEGATE_RABBITMQ_URL }}"
+        - name: KUBEGATE_RABBITMQ_QUEUE
+          value: "{{ .Values.env.KUBEGATE_RABBITMQ_QUEUE }}"
+        - name: KUBEGATE_BACKEND
+          value: "{{ .Values.env.KUBEGATE_BACKEND }}"
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
