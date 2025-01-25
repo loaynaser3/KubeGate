@@ -2,7 +2,7 @@ package queue
 
 import (
 	"fmt"
-	"log"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -32,23 +32,51 @@ func (r *RabbitMQ) Connect() error {
 	return nil
 }
 
-// SendMessage publishes a message to a specified queue
-func (r *RabbitMQ) SendMessage(queueName, message, correlationID, replyTo string) error {
-	// Ensure the queue exists
+// DeclareQueue ensures a queue exists with consistent attributes
+func (r *RabbitMQ) DeclareQueue(queueName string) error {
+	_, err := r.Channel.QueueDeclare(
+		queueName,
+		true,  // Durable
+		false, // Auto-delete
+		false, // Exclusive
+		false, // No-wait
+		nil,   // Arguments
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare queue %s: %v", queueName, err)
+	}
+
+	logrus.WithField("queue", queueName).Info("Queue declared successfully")
+	return nil
+}
+
+// CreateQueue ensures a queue exists with consistent attributes
+func (r *RabbitMQ) CreateQueue(queueName string) error {
 	_, err := r.Channel.QueueDeclare(
 		queueName, // Queue name
-		false,     // Durable
-		false,     // Delete when unused
+		true,      // Durable
+		false,     // Auto-delete
 		false,     // Exclusive
 		false,     // No-wait
 		nil,       // Arguments
 	)
 	if err != nil {
-		return fmt.Errorf("failed to declare queue: %v", err)
+		return fmt.Errorf("failed to declare queue %s: %v", queueName, err)
+	}
+
+	logrus.WithField("queue", queueName).Info("Queue created successfully")
+	return nil
+}
+
+// SendMessage publishes a message to a specified queue
+func (r *RabbitMQ) SendMessage(queueName, message, correlationID, replyTo string) error {
+	// Ensure the queue exists
+	if err := r.DeclareQueue(queueName); err != nil {
+		return fmt.Errorf("failed to ensure queue exists: %v", err)
 	}
 
 	// Publish the message
-	err = r.Channel.Publish(
+	err := r.Channel.Publish(
 		"",        // Exchange
 		queueName, // Routing key
 		false,     // Mandatory
@@ -65,8 +93,9 @@ func (r *RabbitMQ) SendMessage(queueName, message, correlationID, replyTo string
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"queue":       queueName,
-		"correlation": correlationID,
+		"queue":        queueName,
+		"correlation":  correlationID,
+		"message_size": len(message),
 	}).Info("Message sent to queue")
 	return nil
 }
@@ -74,16 +103,8 @@ func (r *RabbitMQ) SendMessage(queueName, message, correlationID, replyTo string
 // ReceiveMessages consumes messages from a specified queue and invokes the handler
 func (r *RabbitMQ) ReceiveMessages(queueName string, handler func(Message) error) error {
 	// Ensure the queue exists
-	_, err := r.Channel.QueueDeclare(
-		queueName, // Queue name
-		false,     // Durable
-		false,     // Delete when unused
-		false,     // Exclusive
-		false,     // No-wait
-		nil,       // Arguments
-	)
-	if err != nil {
-		return fmt.Errorf("failed to declare queue: %v", err)
+	if err := r.DeclareQueue(queueName); err != nil {
+		return fmt.Errorf("failed to ensure queue exists: %v", err)
 	}
 
 	// Start consuming messages
@@ -121,6 +142,10 @@ func (r *RabbitMQ) ReceiveMessages(queueName string, handler func(Message) error
 
 // PublishResponse sends a response message to the reply queue
 func (r *RabbitMQ) PublishResponse(replyTo, correlationID, response string) error {
+	if replyTo == "" {
+		return fmt.Errorf("replyTo queue name is empty")
+	}
+
 	err := r.Channel.Publish(
 		"",      // Exchange
 		replyTo, // Reply queue
@@ -133,29 +158,80 @@ func (r *RabbitMQ) PublishResponse(replyTo, correlationID, response string) erro
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to publish response: %v", err)
+		return fmt.Errorf("failed to publish response to queue %s: %v", replyTo, err)
+	}
+
+	// Log the response with additional metadata
+	truncatedResponse := response
+	if len(response) > 100 {
+		truncatedResponse = response[:100] + "..."
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"reply_queue": replyTo,
-		"correlation": correlationID,
-		"response":    response,
+		"reply_queue":  replyTo,
+		"correlation":  correlationID,
+		"response_len": len(response),
+		"response":     truncatedResponse,
 	}).Info("Response published to reply queue")
+
+	return nil
+}
+
+// DeleteQueue deletes a RabbitMQ queue
+func (r *RabbitMQ) DeleteQueue(queueName string) error {
+	ch, err := r.Conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open channel: %w", err)
+	}
+	defer ch.Close()
+
+	_, err = ch.QueueDelete(
+		queueName, // Queue name
+		false,     // IfUnused
+		false,     // IfEmpty
+		false,     // NoWait
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete queue %s: %w", queueName, err)
+	}
+
+	logrus.WithField("queue", queueName).Info("Queue deleted successfully")
 	return nil
 }
 
 // Close closes the RabbitMQ connection and channel
 func (r *RabbitMQ) Close() error {
+	var closeErrors []string
+
+	// Close the channel
 	if r.Channel != nil {
-		if err := r.Channel.Close(); err != nil {
-			log.Printf("Failed to close channel: %v", err)
+		if err := r.Channel.Close(); err != nil && !isChannelAlreadyClosedError(err) {
+			closeErrors = append(closeErrors, fmt.Sprintf("Failed to close channel: %v", err))
 		}
 	}
+
+	// Close the connection
 	if r.Conn != nil {
-		if err := r.Conn.Close(); err != nil {
-			log.Printf("Failed to close connection: %v", err)
+		if err := r.Conn.Close(); err != nil && !isConnectionAlreadyClosedError(err) {
+			closeErrors = append(closeErrors, fmt.Sprintf("Failed to close connection: %v", err))
 		}
 	}
-	logrus.Info("RabbitMQ connection closed")
+
+	// Log and return any errors encountered during closure
+	if len(closeErrors) > 0 {
+		errMsg := strings.Join(closeErrors, "; ")
+		logrus.WithError(fmt.Errorf(errMsg)).Error("Failed to close RabbitMQ resources")
+		return fmt.Errorf(errMsg)
+	}
+
+	logrus.Info("RabbitMQ connection closed successfully")
 	return nil
+}
+
+func isChannelAlreadyClosedError(err error) bool {
+	return strings.Contains(err.Error(), "channel/connection is not open")
+}
+
+func isConnectionAlreadyClosedError(err error) bool {
+	return strings.Contains(err.Error(), "channel/connection is not open")
 }
