@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // export LOG_LEVEL=debug
@@ -23,26 +24,31 @@ func Initialize() {
 	}
 	Logger.SetLevel(level)
 
-	// Set log output format
-	Logger.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	// Set log output format (TextFormatter for now)
+	useJSON := os.Getenv("LOG_FORMAT") == "json"
+	if useJSON {
+		Logger.SetFormatter(&logrus.JSONFormatter{})
+	} else {
+		Logger.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	}
 
-	// Set log output file
+	// Configure log output
 	logFile := os.Getenv("LOG_FILE")
 	if logFile != "" {
-		file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			Logger.Fatalf("Failed to open log file: %v", err)
-		}
-		Logger.SetOutput(file)
-	} else if logFile == "" {
-		logFile = "/tmp/kubegate.log"
-		file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			Logger.Fatalf("Failed to open log file: %v", err)
-		}
-		Logger.SetOutput(file)
-		// Logger.SetOutput(os.Stdout) // Default to stdout if no log file is provided
+		// Use log rotation with lumberjack
+		Logger.SetOutput(&lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    10,   // Max megabytes before log is rotated
+			MaxBackups: 3,    // Max number of old log files to keep
+			MaxAge:     28,   // Max number of days to retain old logs
+			Compress:   true, // Compress old logs
+		})
+	} else {
+		// Default to stdout if no log file is provided
+		Logger.SetOutput(os.Stdout)
 	}
+
+	Logger.Info("Logger initialized successfully")
 }

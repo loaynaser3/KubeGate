@@ -19,6 +19,12 @@ type SQS struct {
 	Timeout  time.Duration // Timeout for receiving messages
 }
 
+// Create new Queue
+// TODO: implement Create sqs queue, currently placeholder
+func (s *SQS) CreateQueue(queueName string) error {
+	return nil
+}
+
 // Connect initializes the SQS client and validates the connection
 func (s *SQS) Connect() error {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
@@ -98,6 +104,12 @@ func (s *SQS) PublishResponse(replyTo, correlationID, response string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send response: %v", err)
 	}
+	return nil
+}
+
+// Delete RabbitMQ queue
+// TODO: implement delete sqs, currently placeholder
+func (s *SQS) DeleteQueue(queueName string) error {
 	return nil
 }
 
