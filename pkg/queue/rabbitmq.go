@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/loaynaser3/KubeGate/pkg/logging"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
@@ -28,7 +29,7 @@ func (r *RabbitMQ) Connect() error {
 		return fmt.Errorf("failed to open a channel: %v", err)
 	}
 	r.Channel = ch
-	logrus.Info("Connected to RabbitMQ successfully")
+	logging.Logger.Info("Connected to RabbitMQ successfully")
 	return nil
 }
 
@@ -46,7 +47,7 @@ func (r *RabbitMQ) DeclareQueue(queueName string) error {
 		return fmt.Errorf("failed to declare queue %s: %v", queueName, err)
 	}
 
-	logrus.WithField("queue", queueName).Info("Queue declared successfully")
+	logging.Logger.WithField("queue", queueName).Info("Queue declared successfully")
 	return nil
 }
 
@@ -64,7 +65,7 @@ func (r *RabbitMQ) CreateQueue(queueName string) error {
 		return fmt.Errorf("failed to declare queue %s: %v", queueName, err)
 	}
 
-	logrus.WithField("queue", queueName).Info("Queue created successfully")
+	logging.Logger.WithField("queue", queueName).Info("Queue created successfully")
 	return nil
 }
 
@@ -92,7 +93,7 @@ func (r *RabbitMQ) SendMessage(queueName, message, correlationID, replyTo string
 		return fmt.Errorf("failed to publish message: %v", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logging.Logger.WithFields(logrus.Fields{
 		"queue":        queueName,
 		"correlation":  correlationID,
 		"message_size": len(message),
@@ -121,7 +122,7 @@ func (r *RabbitMQ) ReceiveMessages(queueName string, handler func(Message) error
 		return fmt.Errorf("failed to consume messages: %v", err)
 	}
 
-	logrus.WithField("queue", queueName).Info("Started listening to queue")
+	logging.Logger.WithField("queue", queueName).Info("Started listening to queue")
 
 	// Process messages using the provided handler
 	for msg := range msgs {
@@ -131,7 +132,7 @@ func (r *RabbitMQ) ReceiveMessages(queueName string, handler func(Message) error
 			ReplyTo:       msg.ReplyTo,
 		}
 		if err := handler(message); err != nil {
-			logrus.WithFields(logrus.Fields{
+			logging.Logger.WithFields(logrus.Fields{
 				"error":       err.Error(),
 				"correlation": msg.CorrelationId,
 			}).Error("Failed to process message")
@@ -167,7 +168,7 @@ func (r *RabbitMQ) PublishResponse(replyTo, correlationID, response string) erro
 		truncatedResponse = response[:100] + "..."
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logging.Logger.WithFields(logrus.Fields{
 		"reply_queue":  replyTo,
 		"correlation":  correlationID,
 		"response_len": len(response),
@@ -195,7 +196,7 @@ func (r *RabbitMQ) DeleteQueue(queueName string) error {
 		return fmt.Errorf("failed to delete queue %s: %w", queueName, err)
 	}
 
-	logrus.WithField("queue", queueName).Info("Queue deleted successfully")
+	logging.Logger.WithField("queue", queueName).Info("Queue deleted successfully")
 	return nil
 }
 
@@ -220,11 +221,11 @@ func (r *RabbitMQ) Close() error {
 	// Log and return any errors encountered during closure
 	if len(closeErrors) > 0 {
 		errMsg := strings.Join(closeErrors, "; ")
-		logrus.WithError(fmt.Errorf(errMsg)).Error("Failed to close RabbitMQ resources")
+		logging.Logger.WithError(fmt.Errorf(errMsg)).Error("Failed to close RabbitMQ resources")
 		return fmt.Errorf(errMsg)
 	}
 
-	logrus.Info("RabbitMQ connection closed successfully")
+	logging.Logger.Info("RabbitMQ connection closed successfully")
 	return nil
 }
 

@@ -83,8 +83,8 @@ func ExecuteRun(kubeCommand string, args []string) {
 
 	select {
 	case response := <-responseChan:
-		fmt.Printf("Response received: %s\n", response)
-	case <-time.After(60 * time.Second): // Add timeout to avoid indefinite waiting
+		fmt.Printf("Response received:\n%s", response)
+	case <-time.After(60 * time.Second): // Timeout to avoid indefinite waiting
 		logging.Logger.Fatalf("Timeout waiting for response.")
 	}
 }

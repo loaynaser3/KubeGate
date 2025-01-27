@@ -27,6 +27,8 @@ spec:
           value: "{{ .Values.env.KUBEGATE_RABBITMQ_QUEUE }}"
         - name: KUBEGATE_BACKEND
           value: "{{ .Values.env.KUBEGATE_BACKEND }}"
+        - name: LOG_FORMAT
+          value: "{{ .Values.env.LOG_FORMAT }}"
         resources:
           limits:
             cpu: {{ .Values.resources.limits.cpu }}
