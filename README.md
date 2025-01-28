@@ -1,14 +1,15 @@
-
 # KubeGate
 
 ## Description
-KubeGate is a Kubernetes proxy tool that enables secure and efficient command execution on private clusters. It leverages RabbitMQ for communication between clients and agents, allowing for seamless integration with multi-tenant environments and role-based permissions management.
+KubeGate is a Kubernetes proxy tool that simplifies secure and efficient command execution on private clusters. It bridges the gap between remote clients and cluster resources using RabbitMQ for seamless communication, ensuring multi-tenant compatibility and robust role-based permissions.
+
+With KubeGate, you can execute Kubernetes commands remotely while maintaining control over agent access and command handling. Its dynamic configuration and context management make it a versatile tool for DevOps workflows.
 
 ## Features
 - **Queue Segmentation**: Ensures isolated command handling for multiple agents and contexts.
 - **Dynamic RabbitMQ Configuration**:
-  - Agent: Supports RabbitMQ details via environment variables or YAML configuration.
-  - Client: Supports multiple contexts, similar to `kubectl`, with configurable RabbitMQ queues.
+  - **Agent**: Supports RabbitMQ details via environment variables or YAML configuration.
+  - **Client**: Supports multiple contexts, similar to `kubectl`, with configurable RabbitMQ queues.
 - **Command Execution**: Executes `kubectl` commands on behalf of the client using agents running inside the target clusters.
 - **Response Management**: Uses unique correlation IDs for each client request, ensuring responses are routed back to the correct client.
 
@@ -16,15 +17,24 @@ KubeGate is a Kubernetes proxy tool that enables secure and efficient command ex
 
 ![KubeGate Diagram](docs/KubeGate-Diagram.jpeg)
 
-## Build package and Deployment
+The diagram illustrates how the client interacts with the RabbitMQ messaging system, communicates commands to the agent, and receives responses securely.
 
-* you need GoLang Version 1.23 or higher 
-### Build client binary locally
-1. go build command
-```bash 
-  go build -o kubegate .
-  ```
-2. verify kubegate running
+## Build Package and Deployment
+
+### Prerequisites
+- GoLang Version 1.23 or higher.
+- Docker installed.
+- Access to a Kubernetes cluster.
+- RabbitMQ instance (e.g., set up locally or via a cloud provider like CloudAMQP). *you can get a free dev instance from [CloudAMQ](https://www.cloudamqp.com/) free.*
+ 
+
+### Build Client Binary Locally
+1. Run the build command:
+   ```bash 
+   go build -o kubegate .
+  *Alternatively, download the compiled package from the [releases page](https://github.com/loaynaser3/KubeGate/releases).*
+
+2. Verify KubeGate is running:
 ```bash
   ./kubegate --help
   ```
@@ -35,8 +45,9 @@ KubeGate is a Kubernetes proxy tool that enables secure and efficient command ex
 ### Deploy Agent on K8S
 ```bash
 cd helm/kubegate-agent
-# edit values.yaml env section with relevant RabbitMQ details
-# change the image repository or keep the default if you can pull it
+# Edit values.yaml env section with relevant RabbitMQ details
+# Easiest way to get a RabbitMQ dev instance is via CloudAMQP for free (suitable for personal/dev use)
+# Change the image repository or keep the default if accessible
 helm install kubegate . -f values.yaml
 ```
 
@@ -49,6 +60,11 @@ helm install kubegate . -f values.yaml
   ```bash
   kubeGate [command] [args...]
   ```
+- Alias:
+
+  ```bash 
+  alias kubectl="path/to/kubegate"
+  ```
 
 ### Examples
 1. **Basic Command Execution**:
@@ -57,11 +73,10 @@ helm install kubegate . -f values.yaml
    ```
    Executes `kubectl get pods -n default` in the current context.
 
-2. **Switching Contexts**:
+2. **Switching Contexts:**
    ```bash
    kubeGate config set-context dev --rabbitmq-url amqp://user:pass@dev-rabbitmq:5672/ --command-queue kubegate-commands-dev
    kubeGate config use-context dev
-   kubeGate run describe pod nginx
    ```
 
 3. **List Available Contexts**:
@@ -70,11 +85,13 @@ helm install kubegate . -f values.yaml
    ```
 
 ## TODO
+### Current
 - **Interactive Shell**: Add support for running multiple commands in a single session.
+- **Enhanced Security**: Explore TLS for RabbitMQ connections and stricter command validation.
 - **Prometheus Metrics**: Export metrics such as command execution count and latency.
 - **Error Logging**: Enhance error visibility and structured logging.
 - **Advanced Configuration**: Add support for namespace-based configurations.
-- **Enhanced Security**: ~~Explore TLS for RabbitMQ connections and stricter command validation.~~
+
 
 ---
 
